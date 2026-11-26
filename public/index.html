@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ganga</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M9 4h19v24H9L2 16z' fill='%23ffd60a'/%3E%3Ccircle cx='9' cy='16' r='2.4' fill='%23101828'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="top__brand">
+      <span class="brand-tag" aria-hidden="true"></span>
+      <h1>Ganga</h1>
+    </div>
+    <p class="top__status" id="status" role="status"></p>
+    <div class="top__actions">
+      <button class="btn" id="runAll" type="button">Buscar ahora</button>
+      <button class="btn btn--quiet" id="openSettings" type="button">Ajustes</button>
+    </div>
+  </header>
+
+  <main class="page">
+    <div id="banner"></div>
+
+    <form class="quick" id="quickAdd" autocomplete="off">
+      <label class="quick__field quick__field--name">
+        <span class="quick__label">¿Qué quieres comprar?</span>
+        <input name="name" required maxlength="120" placeholder="Sony WH-1000XM5, Nintendo Switch 2, cafetera De'Longhi Magnifica…">
+      </label>
+      <label class="quick__field quick__field--price">
+        <span class="quick__label">Te parecería una ganga a</span>
+        <span class="money-input"><input name="targetPrice" inputmode="decimal" placeholder="250"><span aria-hidden="true">€</span></span>
+      </label>
+      <div class="quick__buttons">
+        <button class="btn btn--primary" type="submit">Vigilar</button>
+        <button class="btn btn--quiet" id="moreOptions" type="button">Más opciones</button>
+      </div>
+    </form>
+
+    <section id="items" aria-live="polite"></section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <div class="tip" id="tip" role="tooltip" hidden></div>
+
+  <!-- Añadir / editar artículo -->
+  <dialog id="itemDialog">
+    <form method="dialog" id="itemForm" class="sheet">
+      <h2 id="itemDialogTitle">Artículo</h2>
+      <input type="hidden" name="id">
+
+      <label class="field">
+        <span>Nombre</span>
+        <input name="name" required maxlength="120">
+      </label>
+      <label class="field">
+        <span>Texto que se busca en las tiendas</span>
+        <input name="query" maxlength="160" placeholder="Igual que el nombre si lo dejas vacío">
+        <small>Cuanto más exacto (marca y modelo), menos resultados que no tienen que ver.</small>
+      </label>
+
+      <div class="row2">
+        <label class="field">
+          <span>Precio objetivo (total con envío)</span>
+          <span class="money-input"><input name="targetPrice" inputmode="decimal"><span aria-hidden="true">€</span></span>
+        </label>
+        <label class="field">
+          <span>Ignorar ofertas por debajo de</span>
+          <span class="money-input"><input name="minPrice" inputmode="decimal"><span aria-hidden="true">€</span></span>
+          <small>Para descartar accesorios o estafas muy baratas.</small>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Estado</span>
+        <select name="condition">
+          <option value="new">Solo nuevo</option>
+          <option value="used">Solo segunda mano o reacondicionado</option>
+          <option value="any">Me da igual</option>
+        </select>
+      </label>
+
+      <div class="row2">
+        <label class="field">
+          <span>Debe aparecer en el título</span>
+          <input name="mustInclude" placeholder="negro, 128GB">
+          <small>Palabras separadas por comas.</small>
+        </label>
+        <label class="field">
+          <span>No debe aparecer</span>
+          <input name="exclude" placeholder="pro, max">
+          <small>Palabras separadas por comas.</small>
+        </label>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" name="filterAccessories" checked>
+        <span>Descartar fundas, cables, repuestos y otros accesorios</span>
+      </label>
+
+      <label class="field">
+        <span>Páginas de tienda concretas (una por línea)</span>
+        <textarea name="urls" rows="3" placeholder="https://www.tienda.de/producto-123"></textarea>
+        <small>Ganga lee el precio directamente de esas fichas, sin necesitar ninguna clave. No funciona en tiendas que bloquean robots, como Amazon.</small>
+      </label>
+
+      <label class="field">
+        <span>Países donde buscar solo este artículo</span>
+        <div class="chips" id="itemCountries"></div>
+        <small>Si no marcas ninguno, usa los de Ajustes.</small>
+      </label>
+
+      <label class="field">
+        <span>Notas</span>
+        <input name="notes" maxlength="300">
+      </label>
+
+      <p class="form-error" id="itemError" role="alert" hidden></p>
+      <div class="sheet__buttons">
+        <button class="btn btn--quiet" value="cancel" type="button" data-close>Cancelar</button>
+        <button class="btn btn--primary" type="submit" id="itemSave">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Ajustes -->
+  <dialog id="settingsDialog">
+    <form method="dialog" id="settingsForm" class="sheet">
+      <h2>Ajustes</h2>
+
+      <fieldset>
+        <legend>Dónde recibes los pedidos</legend>
+        <div class="row2">
+          <label class="field">
+            <span>País</span>
+            <select name="homeCountry" id="homeCountry"></select>
+          </label>
+          <label class="field">
+            <span>Código postal (opcional)</span>
+            <input name="homeZip" maxlength="12" inputmode="numeric">
+            <small>Con él, eBay calcula el envío exacto hasta tu puerta.</small>
+          </label>
+        </div>
+        <p class="hint">Cuando una tienda no dice cuánto cuesta el envío, Ganga lo estima con estas tarifas. Para tiendas fuera de la UE suma además un porcentaje de IVA/aduana.</p>
+        <div class="row4">
+          <label class="field"><span>Mismo país</span><span class="money-input"><input name="ship_domestic" inputmode="decimal"><span aria-hidden="true">€</span></span></label>
+          <label class="field"><span>Otro país de la UE</span><span class="money-input"><input name="ship_eu" inputmode="decimal"><span aria-hidden="true">€</span></span></label>
+          <label class="field"><span>Fuera de la UE</span><span class="money-input"><input name="ship_nonEu" inputmode="decimal"><span aria-hidden="true">€</span></span></label>
+          <label class="field"><span>IVA y aduana fuera de la UE</span><span class="money-input"><input name="ship_importPct" inputmode="decimal"><span aria-hidden="true">%</span></span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Países donde buscar</legend>
+        <div class="chips" id="searchCountries"></div>
+        <p class="hint" id="quota"></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Fuentes de precios</legend>
+        <label class="field">
+          <span>Clave de Serper (Google Shopping)</span>
+          <span class="secret"><input name="serperApiKey" type="password" autocomplete="off" placeholder="" id="serperApiKey"><button type="button" class="btn btn--quiet" data-clear="serperApiKey">Quitar</button></span>
+          <small>Es la fuente principal: una búsqueda recorre cientos de tiendas. Consíguela gratis en <a href="https://serper.dev" target="_blank" rel="noopener noreferrer">serper.dev</a> (2.500 búsquedas de regalo).</small>
+        </label>
+        <div class="row2">
+          <label class="field">
+            <span>eBay: Client ID</span>
+            <span class="secret"><input name="ebayClientId" type="password" autocomplete="off" id="ebayClientId"><button type="button" class="btn btn--quiet" data-clear="ebayClientId">Quitar</button></span>
+          </label>
+          <label class="field">
+            <span>eBay: Client Secret</span>
+            <span class="secret"><input name="ebayClientSecret" type="password" autocomplete="off" id="ebayClientSecret"><button type="button" class="btn btn--quiet" data-clear="ebayClientSecret">Quitar</button></span>
+          </label>
+        </div>
+        <small class="hint">Opcional. eBay da el envío real hasta tu casa. Las claves se crean gratis en <a href="https://developer.ebay.com" target="_blank" rel="noopener noreferrer">developer.ebay.com</a>.</small>
+        <div class="field">
+          <span>Mercados de eBay</span>
+          <div class="chips" id="ebayMarkets"></div>
+        </div>
+        <label class="check">
+          <input type="checkbox" name="demoMode">
+          <span>Modo demo: ofertas inventadas para probar la app</span>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Horario de búsquedas</legend>
+        <div class="times" id="times"></div>
+        <p class="hint">El ordenador tiene que estar encendido con Ganga abierto. Si estaba apagado, al volver hace la búsqueda que se perdió.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Avisos al móvil</legend>
+        <p class="hint">Te avisamos cuando un artículo baja de tu precio objetivo o llega a su mínimo histórico.</p>
+        <div class="row2">
+          <label class="field">
+            <span>Tema de ntfy</span>
+            <input name="ntfyTopic" maxlength="100" placeholder="ganga-un-nombre-largo-y-secreto">
+            <small>Instala la app ntfy y suscríbete a este tema. Cualquiera que lo conozca puede leer los avisos: usa un nombre difícil de adivinar.</small>
+          </label>
+          <label class="field">
+            <span>Servidor de ntfy</span>
+            <input name="ntfyServer" maxlength="200">
+          </label>
+        </div>
+        <div class="row2">
+          <label class="field">
+            <span>Token del bot de Telegram</span>
+            <span class="secret"><input name="telegramBotToken" type="password" autocomplete="off" id="telegramBotToken"><button type="button" class="btn btn--quiet" data-clear="telegramBotToken">Quitar</button></span>
+          </label>
+          <label class="field">
+            <span>ID de chat de Telegram</span>
+            <input name="telegramChatId" maxlength="40">
+          </label>
+        </div>
+        <button class="btn" type="button" id="testNotify">Enviar aviso de prueba</button>
+      </fieldset>
+
+      <p class="form-error" id="settingsError" role="alert" hidden></p>
+      <div class="sheet__buttons">
+        <button class="btn btn--quiet" type="button" data-close>Cancelar</button>
+        <button class="btn btn--primary" type="submit">Guardar ajustes</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
